@@ -1,0 +1,33 @@
+subscribers:
+
+  camera_reading:
+    topic: /camera/rgb/image_raw
+    queue_size: 1
+
+actions:
+
+  camera_reading:
+    name: /darkflow_ros/check_for_objects
+
+publishers:
+
+  object_detector:
+    topic: /darkflow_ros/found_object
+    queue_size: 1
+    latch: false
+
+  bounding_boxes:
+    topic: /darkflow_ros/bounding_boxes
+    queue_size: 1
+    latch: false
+
+  detection_image:
+    topic: /darkflow_ros/detection_image
+    queue_size: 1
+    latch: true
+
+image_view:
+
+  enable_opencv: true
+  wait_key_delay: 1
+  enable_console_output: true
