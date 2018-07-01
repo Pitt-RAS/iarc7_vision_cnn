@@ -3,17 +3,31 @@
   <arg name="yolo_checkpoint_path" default="$(find iarc7_vision_cnn)/cfg/darkflow_config/ckpt"/>
   <arg name="yolo_config_path"    default="$(find iarc7_vision_cnn)/cfg/darkflow_config/cfg"/>
   <arg name="yolo_labels_path"    default="$(find iarc7_vision_cnn)/cfg/darkflow_config/"/>
+  <arg name="yolo_threshold"    default="0.5"/>
+  <arg name="yolo_gpu_usage"   default="0.8"/>
+  <arg name="yolo_checkpoint"   default="-1"/>
 
+  <!-- Config Cameras -->
+  <arg name="camera_0" default="/camera/rgb/image_raw"/>
+  <arg name="camera_topic" default="/camera/rgb/camera_info"/>
 
   <!-- Load parameters -->
   <rosparam command="load" ns="darkflow_ros" file="$(find iarc7_vision_cnn)/cfg/ros.yaml"/>
   <rosparam command="load" ns="darkflow_ros" file="$(find iarc7_vision_cnn)/cfg/yolov2-tiny.yaml"/>
 
   <!-- Start darkflow and ros wrapper -->
-  <node pkg="iarc7_vision_cnn" type="darkflow_node" name="darkflow_node" output="screen" launch-prefix="$(arg launch_prefix)">
+  <node pkg="iarc7_vision_cnn" type="darkflow_ros" name="darkflow_ros" output="screen" launch-prefix="$(arg launch_prefix)">
+
     <param name="checkpoint_path" value="$(arg yolo_checkpoint_path)" />
     <param name="config_path"     value="$(arg yolo_config_path)" />
     <param name="labels_path"     value="$(arg yolo_config_path)" />
+    <param name="threshold"     value="$(arg yolo_threshold)" />
+    <param name="gpu_usage"     value="$(arg yolo_gpu_usage)" />
+    <param name="checkpoint"     value="$(arg yolo_checkpoint)" />
+
+    <remap from="image0" to="$(arg camera_0)"/>
+    <remap from="itopic0" to="$(arg camera_topic_0)"/>
+    
   </node>
 
 </launch>
