@@ -1,6 +1,6 @@
-#!/bin/env python2.7
+#!/usr/bin/env python2
 
-from darkflow.darkflow.net.build import TFNet
+from darkflow.net.build import TFNet
 import rospy
 import cv2
 import numpy as np
@@ -10,12 +10,12 @@ from sensor_msgs.msg import Image, CameraInfo
 from image_geometry import PinholeCameraModel
 
 class DfModel:
-"""
- creates a DF model with the following methods:
+    '''
+    creates a DF model with the following methods:
 
- predict(image): returns prediction for a [M,N,3] array
+    predict(image): returns prediction for a [M,N,3] array
 
-"""
+    '''
     def __init__(self,options):
 #        self.options = {"model": "./cfg/tiny-yolo-udacity.cfg",\ 
 #                "backup": "./ckpt/","load": 8987, "gpu": 1.0
@@ -39,17 +39,8 @@ class DfModel:
         
 
 class DfDriver:
-    def __init__(self):
-        self.cpth = rospy.get_param('checkpoint_path')
-        self.ckpt = rospy.get_param('checkpoint')
-        self.cfg  = rospy.get_param('config_path')
-        self.gpu  = rospy.get_param('gpu_usage')
-        self.th   = rospy.get_param('threshold')
-        self.lbls = rospy.get_param('labels_path')
-
-        self.options = {"model": self.cfg, "backup": self.cpth, \
-                "load": self.ckpt, "gpu": self.gpu, "threshold": self.th,\
-                "labels": self.lbls}
+    def __init__(self,options):
+        self.options = options
 
         self.model = DfModel(self.options)
 
@@ -76,8 +67,20 @@ class DfDriver:
 if __name__ == '__main__':
 
     rospy.init_node('darkflow_ros')
+    th   = rospy.get_param('~threshold')
+    cpth = rospy.get_param('~checkpoint_path')
+    ckpt = rospy.get_param('~checkpoint')
+    cfg  = rospy.get_param('~config_path')
+    gpu  = rospy.get_param('~gpu_usage')
+    lbls = rospy.get_param('~labels_path')
 
-    df = DfDriver()
+    options = {"model": cfg, "backup": cpth, \
+                "load": ckpt, "gpu": gpu, "threshold": th,\
+                "labels": lbls}
+
+
+
+    df = DfDriver(options)
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
