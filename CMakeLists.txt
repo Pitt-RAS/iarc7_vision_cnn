@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 2.8.3)
-project(iarc7_vision)
+project(iarc7_vision_cnn)
 
 set("OpenCV_DIR" "/usr/local/share/OpenCV")
 set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE "" INTERNAL)
