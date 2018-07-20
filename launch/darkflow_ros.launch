@@ -1,36 +1,18 @@
 <launch>
-  <!-- Console launch prefix -->
-  <arg name ="launch_prefix" default=""/> 
-  <!-- Config and weights folder. -->
-  <arg name="yolo_checkpoint_path" default="$(find iarc7_vision_cnn)/cfg/darkflow_config/ckpt"/>
-  <arg name="yolo_config_path"    default="$(find iarc7_vision_cnn)/cfg/darkflow_config/cfg/tiny-yolo-voc-roomba.cfg"/>
-  <arg name="yolo_labels_path"    default="$(find iarc7_vision_cnn)/cfg/darkflow_config/labels.txt"/>
-  <arg name="yolo_threshold"    default="0.45"/>
-  <arg name="yolo_gpu_usage"   default="0.2"/>
-  <arg name="yolo_checkpoint"   default="78492"/>
- 
-  <!-- Config Cameras -->
-  <arg name="camera" default="/sim/front_camera/image_raw"/>
-  <arg name="camera_topic" default="/sim/front_camera/camera_info"/>
+    <node pkg="iarc7_vision_cnn"
+        type="DarkflowRos.py"
+        name="darkflow_ros">
 
-  <!-- Load parameters -->
-  <rosparam command="load" ns="darkflow_ros" file="$(find iarc7_vision_cnn)/cfg/ros.yaml"/>
-  <rosparam command="load" ns="darkflow_ros" file="$(find iarc7_vision_cnn)/cfg/yolov2-tiny.yaml"/>
-  <rosparam command="load" file="$(find iarc7_vision)/param/vision_node_params_2.0.yaml"/>
+        <!-- Load parameters -->
+        <rosparam command="load"
+            file="$(find iarc7_vision_cnn)/param/darkflow_ros.yaml" />
 
-  <!-- Start darkflow and ros wrapper -->
-  <node pkg="iarc7_vision_cnn" type="DarkflowRos.py" name="darkflow_ros" output="screen" launch-prefix="$(arg launch_prefix)">
-
-    <param name="checkpoint_path" value="$(arg yolo_checkpoint_path)" />
-    <param name="config_path"     value="$(arg yolo_config_path)" />
-    <param name="labels_path"     value="$(arg yolo_labels_path)" />
-    <param name="threshold"     value="$(arg yolo_threshold)" />
-    <param name="gpu_usage"     value="$(arg yolo_gpu_usage)" />
-    <param name="checkpoint"     value="$(arg yolo_checkpoint)" />
-
-    <remap from="camera" to="$(arg camera)"/>
-    <remap from="camera_topic" to="$(arg camera_topic)"/>
-    
-  </node>
-
+        <!-- Config and weights folder. -->
+        <param name="checkpoint_path"
+            value="$(find iarc7_vision_cnn)/cfg/darkflow_config/ckpt" />
+        <param name="config_path"
+            value="$(find iarc7_vision_cnn)/cfg/darkflow_config/cfg/tiny-yolo-voc-roomba.cfg" />
+        <param name="labels_path"
+            value="$(find iarc7_vision_cnn)/cfg/darkflow_config/labels.txt" />
+    </node>
 </launch>

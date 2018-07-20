@@ -1,0 +1,5 @@
+detection_threshold: 0.45
+gpu_usage: 0.2
+checkpoint: 78492
+image_topic: /sim/front_camera/image_raw
+camera_topic: /sim/front_camera/camera_info
