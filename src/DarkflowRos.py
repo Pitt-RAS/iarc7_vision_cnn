@@ -4,6 +4,7 @@ from darkflow.net.build import TFNet
 from df_driver import DfDriver
 
 import rospy
+import threading
 
 class DfModel(object):
     '''
@@ -14,24 +15,27 @@ class DfModel(object):
     '''
 
     def __init__(self, options):
-        if not options:
-            raise Exception("DarkFlow options not set")
-        else:
-            self.model = TFNet(options)
+        self._lock = threading.Lock()
+        with self._lock:
+            if not options:
+                raise Exception("DarkFlow options not set")
+            else:
+                self.model = TFNet(options)
 
     def predict(self, image):
-        if image is None:
-            raise Exception('Predict received `None` image')
-        return self.model.return_predict(image)
-
+        with self._lock:
+            if image is None:
+                raise Exception('Predict received `None` image')
+            return self.model.return_predict(image)
 
 if __name__ == '__main__':
     rospy.init_node('darkflow_ros')
 
     # obstacle_pub = rospy.Publisher('/detected_obstacles', ObstacleArray,queue_size=5)
 
-    image_topic = rospy.get_param('~image_topic')
-    camera_topic = rospy.get_param('~camera_topic')
+    namespaces = rospy.get_param('~namespaces')
+    image_topics = [namespace + 'image_raw' for namespace in namespaces]
+    camera_topics = [namespace + 'camera_info' for namespace in namespaces]
 
     options = {
         "model":      rospy.get_param('~config_path'),
@@ -44,5 +48,7 @@ if __name__ == '__main__':
 
     model = DfModel(options)
 
-    df = DfDriver(model, image_topic, camera_topic, image_topic)
+    dfs = []
+    for image_topic, camera_topic in zip(image_topics, camera_topics):
+        dfs.append(DfDriver(model, image_topic, camera_topic, image_topic))
     rospy.spin()

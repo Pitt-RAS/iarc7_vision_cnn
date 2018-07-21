@@ -18,6 +18,8 @@ from geometry import intersect_camera_with_ground
 
 
 class DfDriver(object):
+    MIN_FRAME_TIME = rospy.Duration(5)
+
     def __init__(self, model, image_topic, camera_topic, camera_id):
         self.bridge = CvBridge()
 
@@ -41,7 +43,14 @@ class DfDriver(object):
         self._roomba_pub = rospy.Publisher(
             "/detected_roombas", RoombaDetectionFrame, queue_size=100)
 
+        self._last_frame_time = rospy.Time(0)
+
+
     def camera_callback(self, image, camera_info):
+        if image.header.stamp < self._last_frame_time + DfDriver.MIN_FRAME_TIME:
+            return
+        self._last_frame_time = image.header.stamp
+
         self.camera_model.fromCameraInfo(camera_info)
         image_bgr = self.bridge.imgmsg_to_cv2(image, 'bgr8')
         prediction = self.model.predict(image_bgr)
