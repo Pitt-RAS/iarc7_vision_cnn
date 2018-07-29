@@ -50,7 +50,8 @@ if __name__ == '__main__':
 
     dfs = []
     for image_topic, camera_topic in zip(image_topics, camera_topics):
-        dfs.append(DfDriver(model, image_topic, camera_topic, image_topic))
+        camera_id = filter(None, image_topic.split('/'))[0]
+        dfs.append(DfDriver(model, image_topic, camera_topic, camera_id))
 
     rate = rospy.Rate(5)
     while not rospy.is_shutdown():
