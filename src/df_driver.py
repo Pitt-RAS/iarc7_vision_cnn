@@ -6,6 +6,7 @@ import rospy
 from tf import transformations
 import tf2_geometry_msgs
 import tf2_ros
+import threading
 
 from ros_utils.make_safe_callback import make_safe_callback
 
@@ -18,72 +19,89 @@ from geometry import intersect_camera_with_ground
 
 
 class DfDriver(object):
-    MIN_FRAME_TIME = rospy.Duration(5)
-
     def __init__(self, model, image_topic, camera_topic, camera_id):
-        self.bridge = CvBridge()
+        self._lock = threading.Lock()
+        with self._lock:
+            self.bridge = CvBridge()
 
-        self._camera_id = camera_id
+            self._camera_id = camera_id
 
-        self.model = model
+            self.model = model
 
-        self.image_sub = message_filters.Subscriber(image_topic, Image)
-        self.info_sub = message_filters.Subscriber(camera_topic, CameraInfo)
+            self.image_sub = message_filters.Subscriber(image_topic, Image)
+            self.info_sub = message_filters.Subscriber(camera_topic, CameraInfo)
 
-        self.time_synchronizer = message_filters.TimeSynchronizer(
-            [self.image_sub, self.info_sub], 10)
-        self.time_synchronizer.registerCallback(
-                make_safe_callback(self.camera_callback))
+            self.time_synchronizer = message_filters.TimeSynchronizer(
+                [self.image_sub, self.info_sub], 10)
+            self.time_synchronizer.registerCallback(
+                    self.camera_callback)
 
-        self.camera_model = PinholeCameraModel()
+            self.camera_model = None
 
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+            self.tf_buffer = tf2_ros.Buffer()
+            self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
-        self._roomba_pub = rospy.Publisher(
-            "/detected_roombas", RoombaDetectionFrame, queue_size=100)
+            self._roomba_pub = rospy.Publisher(
+                "/detected_roombas", RoombaDetectionFrame, queue_size=100)
 
-        self._last_frame_time = rospy.Time(0)
+            self._last_frame_time = rospy.Time(0)
 
+            self._next_message = None
 
     def camera_callback(self, image, camera_info):
-        if image.header.stamp < self._last_frame_time + DfDriver.MIN_FRAME_TIME:
-            return
-        self._last_frame_time = image.header.stamp
+        with self._lock:
+            if self.camera_model is None:
+                self.camera_model = PinholeCameraModel()
+                self.camera_model.fromCameraInfo(camera_info)
 
-        self.camera_model.fromCameraInfo(camera_info)
-        image_bgr = self.bridge.imgmsg_to_cv2(image, 'bgr8')
-        prediction = self.model.predict(image_bgr)
+            self._next_message = image
 
-        optical_to_map_transform = self.tf_buffer.lookup_transform(
-                "map", image.header.frame_id, image.header.stamp, rospy.Duration(1.0))
+    def process_next_message(self):
+        with self._lock:
+            if self._next_message is None:
+                return
 
-        roomba_frame = RoombaDetectionFrame()
-        roomba_frame.header.frame_id = 'map'
-        roomba_frame.header.stamp = image.header.stamp
-        roomba_frame.camera_id = self._camera_id
-        roomba_frame.detection_region = DfDriver.get_detection_region(
-                image, optical_to_map_transform, self.camera_model)
+            image = self._next_message
+            self._next_message = None
 
-        for pre_dict in prediction:
-            #image_width,image_height = np.shape(image_rgb)
-            #Do for each prediction
-            bx, by = DfDriver._bottom_midpoint_from_bounding_box(pre_dict)
-            ray = DfDriver._projectTo3d(bx, by, self.camera_model)
-            map_target = DfDriver._rayToXyz(
-                    ray,
-                    optical_to_map_transform)
+            self._last_frame_time = image.header.stamp
 
-            if pre_dict["label"] == "roomba":
-                roomba_frame.roombas.append(
-                    DfDriver._handle_roomba_pose(map_target))
-            elif pre_dict["label"] == "obstacle":
-                #TODO: write obstacle stuff
-                pass
-            else:
-                raise Exception('Invalid label %s' % (pre_dict['label'], ))
+            image_bgr = self.bridge.imgmsg_to_cv2(image, 'bgr8')
+            prediction = self.model.predict(image_bgr)
 
-        self._roomba_pub.publish(roomba_frame)
+            try:
+                optical_to_map_transform = self.tf_buffer.lookup_transform(
+                        "map", image.header.frame_id, image.header.stamp, rospy.Duration(1.0))
+            except Exception:
+                rospy.logerr('transform failed')
+                return
+
+            roomba_frame = RoombaDetectionFrame()
+            roomba_frame.header.frame_id = 'map'
+            roomba_frame.header.stamp = image.header.stamp
+            roomba_frame.camera_id = self._camera_id
+            roomba_frame.detection_region = DfDriver.get_detection_region(
+                    image, optical_to_map_transform, self.camera_model)
+
+            for pre_dict in prediction:
+                #image_width,image_height = np.shape(image_rgb)
+                #Do for each prediction
+                bx, by = DfDriver._bottom_midpoint_from_bounding_box(pre_dict)
+                ray = DfDriver._projectTo3d(bx, by, self.camera_model)
+                map_target = DfDriver._rayToXyz(
+                        ray,
+                        optical_to_map_transform)
+
+                if pre_dict["label"] == "roomba":
+                    roomba_frame.roombas.append(
+                        DfDriver._handle_roomba_pose(map_target))
+                elif pre_dict["label"] == "obstacle":
+                    #TODO: write obstacle stuff
+                    pass
+                else:
+                    raise Exception('Invalid label %s' % (pre_dict['label'], ))
+
+            self._roomba_pub.publish(roomba_frame)
 
     @staticmethod
     def _bottom_midpoint_from_bounding_box(preDict):
