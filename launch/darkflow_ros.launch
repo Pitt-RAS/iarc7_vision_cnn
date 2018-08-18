@@ -1,0 +1,18 @@
+<launch>
+    <node pkg="iarc7_vision_cnn"
+        type="DarkflowRos.py"
+        name="darkflow_ros">
+
+        <!-- Load parameters -->
+        <rosparam command="load"
+            file="$(find iarc7_vision_cnn)/param/darkflow_ros.yaml" />
+
+        <!-- Config and weights folder. -->
+        <param name="checkpoint_path"
+            value="$(find iarc7_vision_cnn)/cfg/darkflow_config/ckpt" />
+        <param name="config_path"
+            value="$(find iarc7_vision_cnn)/cfg/darkflow_config/cfg/tiny-yolo-voc-roomba.cfg" />
+        <param name="labels_path"
+            value="$(find iarc7_vision_cnn)/cfg/darkflow_config/labels.txt" />
+    </node>
+</launch>
